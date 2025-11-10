@@ -4,6 +4,8 @@ import axios from "axios";
 export default function Chatbot() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [healthPlanId, setHealthPlanId] = useState("H1560"); // selected health plan
+  const [yearOfService, setYearOfService] = useState("2024"); // selected year
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -18,20 +20,20 @@ export default function Chatbot() {
     setInput("");
 
     try {
-      const response = await axios.post("http://localhost:8000/member/query", {
-        question: input,
-      });
+      const response = await axios.post(
+        "http://localhost:8000/member/query",
+        { question: input },
+        {
+          headers: {
+            "healthPlanId": healthPlanId,
+            "yearOfService": yearOfService,
+          },
+        }
+      );
 
       const data = response.data.answer;
 
-      // If data is array, render as cards
-      let botMessage;
-      if (Array.isArray(data)) {
-        botMessage = { role: "bot", content: data };
-      } else {
-        botMessage = { role: "bot", content: data };
-      }
-
+      let botMessage = { role: "bot", content: data };
       setMessages((prev) => [...prev, botMessage]);
     } catch (err) {
       setMessages((prev) => [
@@ -47,6 +49,32 @@ export default function Chatbot() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
+      {/* Top filter bar */}
+      <div className="flex justify-end p-4 gap-2 bg-white shadow">
+        <select
+          value={healthPlanId}
+          onChange={(e) => setHealthPlanId(e.target.value)}
+          className="border rounded px-3 py-2 focus:ring focus:ring-blue-300"
+        >
+          <option value="">Select HealthPlan</option>
+          <option value="H1560">H1560</option>
+          <option value="H0001">H0001</option>
+        </select>
+
+        <select
+          value={yearOfService}
+          onChange={(e) => setYearOfService(e.target.value)}
+          className="border rounded px-3 py-2 focus:ring focus:ring-blue-300"
+        >
+          <option value="">Select Year</option>
+          <option value="2025">2025</option>
+          <option value="2024">2024</option>
+          <option value="2023">2023</option>
+          <option value="2022">2022</option>
+        </select>
+      </div>
+
+      {/* Chat messages */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
         {messages.map((msg, idx) => {
           if (msg.role === "user") {
@@ -59,7 +87,6 @@ export default function Chatbot() {
               </div>
             );
           } else {
-            // If bot message is array, render dynamic cards
             if (Array.isArray(msg.content)) {
               return (
                 <div key={idx} className="flex flex-col gap-2 self-start">
@@ -74,8 +101,8 @@ export default function Chatbot() {
                           {value === null
                             ? "N/A"
                             : key.toLowerCase().includes("dob")
-                              ? new Date(value).toLocaleDateString()
-                              : value.toString()}
+                            ? new Date(value).toLocaleDateString()
+                            : value.toString()}
                         </p>
                       ))}
                     </div>
@@ -97,6 +124,7 @@ export default function Chatbot() {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Input bar */}
       <div className="p-4 bg-white flex gap-2">
         <input
           type="text"
@@ -116,3 +144,4 @@ export default function Chatbot() {
     </div>
   );
 }
+

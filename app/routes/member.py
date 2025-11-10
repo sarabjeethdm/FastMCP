@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, Header
 from fastapi.responses import JSONResponse
 from openai import OpenAI
 
 from app.config import OPENAI_API_KEY
 from app.services import member_service
+import json
 
 router = APIRouter()
 client = OpenAI(api_key=OPENAI_API_KEY)
@@ -79,24 +80,41 @@ tools = [
 
 # Map tool execution to Python functions
 tool_functions = {
-    "get_eligibility": lambda params: member_service.get_member_eligibility_by_name(
-        params["name"], params["year"]
+    "get_eligibility": lambda params, headers={}: member_service.get_member_eligibility_by_name(
+        params["name"],
+        params["year"],
+        health_plan_id=headers.get("healthPlanId"),
+        year_of_service=headers.get("yearOfService"),
     ),
-    "get_claims": lambda params: member_service.get_member_claims_by_name(
-        params["name"]
+    "get_claims": lambda params, headers={}: member_service.get_member_claims_by_name(
+        params["name"],
+        health_plan_id=headers.get("healthPlanId"),
+        year_of_service=headers.get("yearOfService"),
     ),
-    "get_hccs": lambda params: member_service.get_member_hccs_by_name(params["name"]),
-    "get_members_by_eligibility_year": lambda params: member_service.get_members_by_eligibility_year(
-        params["year"]
+    "get_hccs": lambda params, headers={}: member_service.get_member_hccs_by_name(
+        params["name"],
+        health_plan_id=headers.get("healthPlanId"),
+        year_of_service=headers.get("yearOfService"),
     ),
-    "get_all_members": lambda params: member_service.get_all_members(
-        limit=params.get("limit", 50)
+    "get_members_by_eligibility_year": lambda params, headers={}: member_service.get_members_by_eligibility_year(
+        params["year"],
+        health_plan_id=headers.get("healthPlanId"),
+        year_of_service=headers.get("yearOfService"),
+    ),
+    "get_all_members": lambda params, headers={}: member_service.get_all_members(
+        limit=params.get("limit", 50),
+        health_plan_id=headers.get("healthPlanId"),
+        year_of_service=headers.get("yearOfService"),
     ),
 }
 
 
 @router.post("/query")
-async def member_query(query: dict = Body(...)):
+async def member_query(
+    query: dict = Body(...),
+    health_plan_id: str | None = Header(None, alias="healthplanid"),
+    year_of_service: int | None = Header(None, alias="yearofservice"),
+):
     user_question = query.get("question", "")
 
     response = client.chat.completions.create(
@@ -108,13 +126,15 @@ async def member_query(query: dict = Body(...)):
 
     message = response.choices[0].message
 
+    headers = {"healthPlanId": health_plan_id, "yearOfService": year_of_service}
+    print(f"headers : {headers}")
     # Check if OpenAI wants to call a function
     if message.function_call:
         func_name = message.function_call.name
         import json
 
         params = json.loads(message.function_call.arguments)
-        result = tool_functions[func_name](params)
+        result = tool_functions[func_name](params, headers=headers)
         return JSONResponse({"answer": result})
 
     # Otherwise return plain text
