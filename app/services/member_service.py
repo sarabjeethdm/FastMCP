@@ -152,3 +152,59 @@ def get_members_by_delta_riskscore(
         ).limit(5)
     )
     return members
+
+
+def get_members_by_riskscore_and_eligibility(
+    operator: str,
+    value: float,
+    year: str,
+    health_plan_id: str = None,
+    year_of_service: int = None,
+):
+    """
+    Return members whose deltaRiskScore satisfies the given operator/value
+    AND who are eligible for the given year.
+    """
+    operator_map = {
+        "lt": "$lt",
+        "lte": "$lte",
+        "eq": "$eq",
+        "gte": "$gte",
+        "gt": "$gt",
+    }
+
+    mongo_operator = operator_map.get(operator)
+    if not mongo_operator:
+        return {"error": "Invalid operator"}
+
+    query = {
+        "deltaRiskScore": {mongo_operator: value},
+        f"eligible_year.{year}": {"$exists": True, "$ne": []},
+    }
+
+    if health_plan_id:
+        query["healthPlanId"] = health_plan_id
+    if year_of_service:
+        query["yearOfService"] = year_of_service
+
+    members = list(
+        collection.find(
+            query, {"_id": 0, "Name": 1, "MBI": 1, "deltaRiskScore": 1, "DOB": 1, "yearOfService": 1, "healthPlanId": 1}
+        ).limit(5)
+    )
+
+    member_list = [
+        {
+            "Name": member.get("Name"),
+            "DOB": member.get("DOB").isoformat() if member.get("DOB") else None,
+            "MBI": member.get("MBI"),
+            "deltaRiskScore": member.get("deltaRiskScore"),
+            "healthPlanId": member.get("healthPlanId"),
+            "yearOfService": member.get("yearOfService"),
+        }
+        for member in members
+    ]
+
+    if not member_list:
+        return f"No members found with deltaRiskScore {operator} {value} and eligible for {year}"
+    return member_list

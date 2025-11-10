@@ -96,6 +96,29 @@ tools = [
             "required": ["operator", "value"],
         },
     },
+    {
+        "name": "get_members_by_riskscore_and_eligibility",
+        "description": "Get members whose delta risk score meets a threshold and who are eligible for a given year",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "operator": {
+                    "type": "string",
+                    "enum": ["lt", "lte", "eq", "gte", "gt"],
+                    "description": "Comparison operator for deltaRiskScore",
+                },
+                "value": {
+                    "type": "number",
+                    "description": "Threshold deltaRiskScore value",
+                },
+                "year": {
+                    "type": "string",
+                    "description": "Eligibility year (e.g., '2024')",
+                },
+            },
+            "required": ["operator", "value", "year"],
+        },
+    },
 ]
 
 # Map tool execution to Python functions
@@ -129,6 +152,13 @@ tool_functions = {
     "get_members_by_delta_riskscore": lambda params, headers={}: member_service.get_members_by_delta_riskscore(
         params["operator"],
         params["value"],
+        health_plan_id=headers.get("healthPlanId"),
+        year_of_service=headers.get("yearOfService"),
+    ),
+    "get_members_by_riskscore_and_eligibility": lambda params, headers={}: member_service.get_members_by_riskscore_and_eligibility(
+        params["operator"],
+        params["value"],
+        params["year"],
         health_plan_id=headers.get("healthPlanId"),
         year_of_service=headers.get("yearOfService"),
     ),
