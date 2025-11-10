@@ -61,6 +61,20 @@ tools = [
             "required": ["year"],
         },
     },
+    {
+        "name": "get_all_members",
+        "description": "Get all members (up to an optional limit)",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of members to return",
+                }
+            },
+            "required": [],
+        },
+    },
 ]
 
 # Map tool execution to Python functions
@@ -74,6 +88,9 @@ tool_functions = {
     "get_hccs": lambda params: member_service.get_member_hccs_by_name(params["name"]),
     "get_members_by_eligibility_year": lambda params: member_service.get_members_by_eligibility_year(
         params["year"]
+    ),
+    "get_all_members": lambda params: member_service.get_all_members(
+        limit=params.get("limit", 50)
     ),
 }
 
