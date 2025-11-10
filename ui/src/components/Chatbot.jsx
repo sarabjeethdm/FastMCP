@@ -21,7 +21,7 @@ export default function Chatbot() {
 
     try {
       const response = await axios.post(
-        "http://localhost:8000/member/query",
+        "http://localhost:8001/member/query",
         { question: input },
         {
           headers: {

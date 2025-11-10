@@ -1,10 +1,11 @@
+import json
+
 from fastapi import APIRouter, Body, Header
 from fastapi.responses import JSONResponse
 from openai import OpenAI
 
 from app.config import OPENAI_API_KEY
 from app.services import member_service
-import json
 
 router = APIRouter()
 client = OpenAI(api_key=OPENAI_API_KEY)
@@ -76,6 +77,25 @@ tools = [
             "required": [],
         },
     },
+    {
+        "name": "get_members_by_delta_riskscore",
+        "description": "Get all members filtered by deltaRiskScore comparison",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "operator": {
+                    "type": "string",
+                    "enum": ["lt", "lte", "eq", "gte", "gt"],
+                    "description": "Comparison operator: lt, lte, eq, gte, gt",
+                },
+                "value": {
+                    "type": "number",
+                    "description": "Threshold deltaRiskScore value to compare against",
+                },
+            },
+            "required": ["operator", "value"],
+        },
+    },
 ]
 
 # Map tool execution to Python functions
@@ -103,6 +123,12 @@ tool_functions = {
     ),
     "get_all_members": lambda params, headers={}: member_service.get_all_members(
         limit=params.get("limit", 50),
+        health_plan_id=headers.get("healthPlanId"),
+        year_of_service=headers.get("yearOfService"),
+    ),
+    "get_members_by_delta_riskscore": lambda params, headers={}: member_service.get_members_by_delta_riskscore(
+        params["operator"],
+        params["value"],
         health_plan_id=headers.get("healthPlanId"),
         year_of_service=headers.get("yearOfService"),
     ),
